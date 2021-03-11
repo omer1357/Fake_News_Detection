@@ -118,28 +118,28 @@ def train_test_vectorization(df, col, train):
     df[col] = df[col].apply(countVectorize, dic=dfDic)
     lenDet, maxL = get_len_data(df[col])
     print("\n\nData length details:\n", lenDet, "\n\n")
-    #df[col] = df[col].apply(set_len, target=20)
     trainVec = df[0:trainSize]
     testVec = df[trainSize:]
-    return trainVec, testVec
+    print("Train:\n", trainVec, "\n\n\nTest:\n", testVec)
+    trainX = np.stack(trainVec["title"].to_numpy())
+    #trainX = np.reshape(trainX, (trainX.shape[0], trainX.shape[1], 1))
+    print(trainX)
+    print(trainX.shape)
+    trainX = csr_matrix(trainX)
+    trainY = trainVec["true"].to_numpy()
+    testX = csr_matrix(np.stack(testVec["title"].to_numpy()))
+    #testX = np.reshape(testX, (testX.shape[0], testX.shape[1], 1))
+    testX = csr_matrix(testX)
+    testY = testVec["true"].to_numpy()
+    return trainX, trainY, testX, testY
 
 
 # Vectorize the data and split it to train/test
-trainNews, testNews = train_test_vectorization(newsDF, "title", 0.75)
-print("Train:\n", trainNews, "\n\n\nTest:\n", testNews)
+X_train, Y_train, X_test, Y_test = train_test_vectorization(newsDF, "title", 0.75)
+print("Train:\n", X_train, "\n", Y_train, "\n\n\nTest:\n", X_test, "\n", Y_test)
 
 
-X_train = np.stack(trainNews["title"].to_numpy())
-Y_train = trainNews["true"].to_numpy()
-print(X_train)
-X_test = np.stack(testNews["title"].to_numpy())
-Y_test = testNews["true"].to_numpy()
-
-
-X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
-X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
-
-model = Sequential()
+'''model = Sequential()
 model.add(LSTM(units=20, return_sequences=True))
 model.add(Dropout(0.2))
 
@@ -159,7 +159,7 @@ history = model.fit(X_train, Y_train, epochs=10, batch_size=64)
 result = model.evaluate(X_test, Y_test)
 loss = result[0]
 accuracy = result[1]
-print(f"[+] Accuracy: {accuracy*100:.2f}%")
+print(f"[+] Accuracy: {accuracy*100:.2f}%")'''
 
 
 '''newsDF["title"] = newsDF["title"].apply(preProcess)
@@ -172,11 +172,11 @@ print(len(vec_train.get_feature_names()), "\n\n\n")
 print(X_vec_test)'''
 
 
-'''model = LogisticRegression(C=2)
+model = LogisticRegression(C=2)
 model.fit(X_train, Y_train)
-predicted_value = model.predict(testNews["title"].values.tolist())
-accuracy_value = roc_auc_score(testNews["true"].values.tolist(), predicted_value)
-print("\n\n", accuracy_value)'''
+predicted_value = model.predict(X_test)
+accuracy_value = roc_auc_score(Y_test, predicted_value)
+print("\n\n", accuracy_value)
 
 
 '''model = LogisticRegression(C=2)
