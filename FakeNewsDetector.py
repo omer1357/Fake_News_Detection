@@ -4,6 +4,7 @@ import pandas as pd
 import gensim
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import STOPWORDS
+from scipy.sparse import csr_matrix
 
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer
@@ -11,13 +12,17 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix
 
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import LSTM
+from tensorflow.keras.models import Sequential
+
 trueNews = pd.read_csv("Fake.csv")
 fakeNews = pd.read_csv("True.csv")
 trueNews['true'] = 1
 fakeNews['true'] = 0
 newsDF = pd.concat([trueNews, fakeNews]).reset_index(drop=True)
 newsDF = newsDF.drop(['subject', 'date', 'text'], axis=1)
-newsDF = newsDF.sample(frac=1).reset_index(drop=True)
 
 
 print("NULL values in the dataframe:\n", newsDF.isnull().sum())
@@ -49,6 +54,15 @@ def makeDic(texts):
 
 
 def countVectorize(sen, dic):
+    sen = sen.split()
+    senVec = np.zeros(len(dic))
+    for word in sen:
+        if word in dic:
+            senVec[dic[word]-1] += 1
+    return senVec
+
+
+def countDicVectorize(sen, dic):
     sen = sen.split()
     senVec = np.zeros(len(sen))
     cnt = 0
@@ -94,6 +108,7 @@ def set_len(arr, target):
 
 
 def train_test_vectorization(df, col, train):
+    df = df.sample(frac=1).reset_index(drop=True)
     df[col] = df[col].apply(preProcess)
     print("\n\n\nProcessed df:\n", df)
     trainSize = int(train * len(df))
@@ -103,20 +118,10 @@ def train_test_vectorization(df, col, train):
     df[col] = df[col].apply(countVectorize, dic=dfDic)
     lenDet, maxL = get_len_data(df[col])
     print("\n\nData length details:\n", lenDet, "\n\n")
-    df[col] = df[col].apply(set_len, target=19)
+    #df[col] = df[col].apply(set_len, target=20)
     trainVec = df[0:trainSize]
     testVec = df[trainSize:]
     return trainVec, testVec
-
-
-newsDF["title"] = newsDF["title"].apply(preProcess)
-X_train, X_test, y_train, y_test = train_test_split(newsDF.title, newsDF.true, test_size = 0.25,random_state=2)
-vec_train = CountVectorizer().fit(X_train)
-X_vec_train = vec_train.transform(X_train)
-X_vec_test = vec_train.transform(X_test)
-print(X_vec_train, "\n\n\n")
-print(len(vec_train.get_feature_names()), "\n\n\n")
-print(X_vec_test)
 
 
 # Vectorize the data and split it to train/test
@@ -124,18 +129,80 @@ trainNews, testNews = train_test_vectorization(newsDF, "title", 0.75)
 print("Train:\n", trainNews, "\n\n\nTest:\n", testNews)
 
 
-'''X_train = np.stack(trainNews["title"].to_numpy())
+X_train = np.stack(trainNews["title"].to_numpy())
 Y_train = trainNews["true"].to_numpy()
 print(X_train)
+X_test = np.stack(testNews["title"].to_numpy())
+Y_test = testNews["true"].to_numpy()
 
-model = LogisticRegression(C=2)
+
+X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+
+model = Sequential()
+model.add(LSTM(units=20, return_sequences=True))
+model.add(Dropout(0.2))
+
+model.add(LSTM(units=20, return_sequences=True))
+model.add(Dropout(0.2))
+
+model.add(LSTM(units=20, return_sequences=True))
+model.add(Dropout(0.2))
+
+model.add(LSTM(units=20, return_sequences=False))
+model.add(Dropout(0.2))
+
+model.add(Dense(units=1))
+
+model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
+history = model.fit(X_train, Y_train, epochs=10, batch_size=64)
+result = model.evaluate(X_test, Y_test)
+loss = result[0]
+accuracy = result[1]
+print(f"[+] Accuracy: {accuracy*100:.2f}%")
+
+
+'''newsDF["title"] = newsDF["title"].apply(preProcess)
+X_train, X_test, y_train, y_test = train_test_split(newsDF.title, newsDF.true, test_size = 0.25,random_state=2)
+vec_train = CountVectorizer().fit(X_train)
+X_vec_train = vec_train.transform(X_train)
+X_vec_test = vec_train.transform(X_test)
+print(X_vec_train, "\n\n\n")
+print(len(vec_train.get_feature_names()), "\n\n\n")
+print(X_vec_test)'''
+
+
+'''model = LogisticRegression(C=2)
 model.fit(X_train, Y_train)
 predicted_value = model.predict(testNews["title"].values.tolist())
 accuracy_value = roc_auc_score(testNews["true"].values.tolist(), predicted_value)
 print("\n\n", accuracy_value)'''
+
 
 '''model = LogisticRegression(C=2)
 model.fit(X_vec_train, y_train)
 predicted_value = model.predict(X_vec_test)
 accuracy_value = roc_auc_score(y_test, predicted_value)
 print(accuracy_value)'''
+
+
+'''model = Sequential()
+model.add(LSTM(units=20, return_sequences=True))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.5))
+model.add(LSTM(units=20))
+model.add(tf.keras.layers.BatchNormalization())
+model.add(tf.keras.layers.Dropout(0.5))
+model.add(Dense(1,activation='relu'))
+model.add(Dense(1,activation='sigmoid'))
+model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
+early_stopping = tf.keras.callbacks.EarlyStopping(
+    patience=5,
+    min_delta=0.001,
+    restore_best_weights=True,
+)
+history = model.fit(X_train, Y_train, validation_data=(X_test, Y_test), epochs=10, batch_size=128, callbacks=[early_stopping])
+history_df = pd.DataFrame(history.history)'''
+
+
+
