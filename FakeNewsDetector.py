@@ -17,8 +17,8 @@ from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import LSTM
 from tensorflow.keras.models import Sequential
 
-trueNews = pd.read_csv("Fake.csv")
-fakeNews = pd.read_csv("True.csv")
+fakeNews = pd.read_csv("Fake.csv")
+trueNews = pd.read_csv("True.csv")
 trueNews['true'] = 1
 fakeNews['true'] = 0
 newsDF = pd.concat([trueNews, fakeNews]).reset_index(drop=True)
