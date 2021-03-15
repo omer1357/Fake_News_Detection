@@ -1,32 +1,42 @@
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 import gensim
-from gensim.utils import simple_preprocess
-from gensim.parsing.preprocessing import STOPWORDS
 from scipy.sparse import csr_matrix
 
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix
-
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Dropout
-from tensorflow.keras.layers import LSTM
-from tensorflow.keras.models import Sequential
-
-fakeNews = pd.read_csv("Fake.csv")
-trueNews = pd.read_csv("True.csv")
-trueNews['true'] = 1
-fakeNews['true'] = 0
-newsDF = pd.concat([trueNews, fakeNews]).reset_index(drop=True)
-newsDF = newsDF.drop(['subject', 'date', 'text'], axis=1)
+import pickle
 
 
-print("NULL values in the dataframe:\n", newsDF.isnull().sum())
-print("\n\n\nOriginal dataframe after shuffle:\n", newsDF)
+def load_data():
+    fakeNews = pd.read_csv("Fake.csv")
+    trueNews = pd.read_csv("True.csv")
+    trueNews['true'] = 1
+    fakeNews['true'] = 0
+    newsDF = pd.concat([trueNews, fakeNews]).reset_index(drop=True)
+    newsDF = newsDF.drop(['subject', 'date', 'text'], axis=1)
+
+    secondDF = pd.read_csv("Fake_Real_2nd_Data.csv")
+    secondDF = secondDF.replace("REAL", 1)
+    secondDF = secondDF.replace("FAKE", 0)
+    secondDF = secondDF.drop(['id'], axis=1)
+    secondDF = secondDF.rename(columns={"label": "true"})
+    newsDF = pd.concat([newsDF, secondDF]).reset_index(drop=True)
+
+    thirdDF = pd.read_csv("Fake_Real_3rd_Data.csv")
+    thirdDF = thirdDF.replace("Real", 1)
+    thirdDF = thirdDF.replace("Fake", 0)
+    thirdDF = thirdDF.rename(columns={"label": "true"})
+    newsDF = pd.concat([newsDF, thirdDF]).reset_index(drop=True)
+
+    print("NULL values in the dataframe:\n", newsDF.isnull().sum())
+    print("\n\n\nOriginal merged dataframe:\n", newsDF)
+
+    return newsDF
 
 
 def preProcess(text):
@@ -62,7 +72,7 @@ def countVectorize(sen, dic):
     return senVec
 
 
-def countDicVectorize(sen, dic):
+'''def countDicVectorize(sen, dic):
     sen = sen.split()
     senVec = np.zeros(len(sen))
     cnt = 0
@@ -73,21 +83,7 @@ def countDicVectorize(sen, dic):
             cnt += 1
         else:
             rem += 1
-    return senVec[:len(sen)-rem]
-
-
-# Function created to vectorize a dataframe and return it's vectorization as a list,
-# But replaces with a more efficient way.
-'''def vectorizeDF(df, col, classification, dic):
-    vec = np.zeros(shape=(len(df), len(dic)))
-    y = np.zeros(len(df))
-    index = 0
-    for title in df[col]:
-        fake = int(df.loc[df[col] == title, classification].iloc[0])
-        vec[index] = countVectorize(title, dic)
-        y[index] = fake
-        index += 1
-    return vec, y'''
+    return senVec[:len(sen)-rem]'''
 
 
 def get_len_data(col):
@@ -122,87 +118,80 @@ def train_test_vectorization(df, col, train):
     testVec = df[trainSize:]
     print("Train:\n", trainVec, "\n\n\nTest:\n", testVec)
     trainX = np.stack(trainVec["title"].to_numpy())
-    #trainX = np.reshape(trainX, (trainX.shape[0], trainX.shape[1], 1))
     print(trainX)
     print(trainX.shape)
     trainX = csr_matrix(trainX)
     trainY = trainVec["true"].to_numpy()
-    testX = csr_matrix(np.stack(testVec["title"].to_numpy()))
-    #testX = np.reshape(testX, (testX.shape[0], testX.shape[1], 1))
+    testX = np.stack(testVec["title"].to_numpy())
     testX = csr_matrix(testX)
     testY = testVec["true"].to_numpy()
-    return trainX, trainY, testX, testY
+    return trainX, trainY, testX, testY, dfDic
 
 
-# Vectorize the data and split it to train/test
-X_train, Y_train, X_test, Y_test = train_test_vectorization(newsDF, "title", 0.75)
-print("Train:\n", X_train, "\n", Y_train, "\n\n\nTest:\n", X_test, "\n", Y_test)
+def process_title(title, dic):
+    title = preProcess(title)
+    title = countVectorize(title, dic)
+    title = csr_matrix(title)
+    return title
 
 
-'''model = Sequential()
-model.add(LSTM(units=20, return_sequences=True))
-model.add(Dropout(0.2))
-
-model.add(LSTM(units=20, return_sequences=True))
-model.add(Dropout(0.2))
-
-model.add(LSTM(units=20, return_sequences=True))
-model.add(Dropout(0.2))
-
-model.add(LSTM(units=20, return_sequences=False))
-model.add(Dropout(0.2))
-
-model.add(Dense(units=1))
-
-model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-history = model.fit(X_train, Y_train, epochs=10, batch_size=64)
-result = model.evaluate(X_test, Y_test)
-loss = result[0]
-accuracy = result[1]
-print(f"[+] Accuracy: {accuracy*100:.2f}%")'''
+def learn(x, y, x_test, y_test, dic):
+    learned_model = LogisticRegression(C=2)
+    learned_model.fit(x, y)
+    with open("model.pkl", 'wb') as file:
+        pickle.dump([learned_model, x_test, y_test, dic], file)
+    return learned_model
 
 
-'''newsDF["title"] = newsDF["title"].apply(preProcess)
-X_train, X_test, y_train, y_test = train_test_split(newsDF.title, newsDF.true, test_size = 0.25,random_state=2)
-vec_train = CountVectorizer().fit(X_train)
-X_vec_train = vec_train.transform(X_train)
-X_vec_test = vec_train.transform(X_test)
-print(X_vec_train, "\n\n\n")
-print(len(vec_train.get_feature_names()), "\n\n\n")
-print(X_vec_test)'''
+def load_model():
+    with open("model.pkl", 'rb') as file:
+        read = pickle.load(file)
+    read_model = read[0]
+    x_test = read[1]
+    y_test = read[2]
+    dic = read[3]
+    return read_model, x_test, y_test, dic
 
 
-model = LogisticRegression(C=2)
-model.fit(X_train, Y_train)
-predicted_value = model.predict(X_test)
-accuracy_value = roc_auc_score(Y_test, predicted_value)
-print("\n\n", accuracy_value)
+def test(test_model, x, y):
+    predicted_value = test_model.predict(x)
+    accuracy_value = roc_auc_score(y, predicted_value)
+    return accuracy_value, confusion_matrix(y, predicted_value)
 
 
-'''model = LogisticRegression(C=2)
-model.fit(X_vec_train, y_train)
-predicted_value = model.predict(X_vec_test)
-accuracy_value = roc_auc_score(y_test, predicted_value)
-print(accuracy_value)'''
+def show_cf(cf):
+    group_labels = ["True Neg", "False Pos", "False Neg", "True Pos"]
+    group_counts = ["{0:0.0f}".format(value) for value in cf.flatten()]
+    group_percentages = ["{0:.2%}".format(value) for value in cf.flatten() / np.sum(cf)]
+    labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_labels, group_counts, group_percentages)]
+    labels = np.asarray(labels).reshape(2, 2)
+    sns.heatmap(cf, annot=labels, fmt="", cmap='Blues')
+    plt.show()
 
 
-'''model = Sequential()
-model.add(LSTM(units=20, return_sequences=True))
-model.add(tf.keras.layers.BatchNormalization())
-model.add(tf.keras.layers.Dropout(0.5))
-model.add(LSTM(units=20))
-model.add(tf.keras.layers.BatchNormalization())
-model.add(tf.keras.layers.Dropout(0.5))
-model.add(Dense(1,activation='relu'))
-model.add(Dense(1,activation='sigmoid'))
-model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
-early_stopping = tf.keras.callbacks.EarlyStopping(
-    patience=5,
-    min_delta=0.001,
-    restore_best_weights=True,
-)
-history = model.fit(X_train, Y_train, validation_data=(X_test, Y_test), epochs=10, batch_size=128, callbacks=[early_stopping])
-history_df = pd.DataFrame(history.history)'''
+def start_program():
+    df = load_data()
+    relearn = input("Would you like the ai to relearn the data? (Y/N)\n")
+    if relearn == "Y":
+        X_train, Y_train, X_test, Y_test, dic = train_test_vectorization(df, "title", 0.75)
+        model = learn(X_train, Y_train, X_test, Y_test, dic)
+        acc, cf = test(model, X_test, Y_test)
+        print("Relearn process completed:", acc, "Success rate.")
+    else:
+        model, X_test, Y_test, dic = load_model()
+        acc, cf = test(model, X_test, Y_test)
+        print("Model loaded.", acc, "Success rate.")
+
+    present_cf = input("Would you like to see the ai confusion matrix? (Y/N)\n")
+    if present_cf == "Y":
+        show_cf(cf)
+
+    title = str(input("Enter title (enter 0 to stop the program)\n"))
+    while title != "0":
+        processed_title = process_title(title, dic)
+        print(model.predict(processed_title))
+        title = str(input("Enter title (enter 0 to stop the program)\n"))
 
 
+start_program()
 
