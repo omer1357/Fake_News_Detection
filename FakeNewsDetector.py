@@ -169,11 +169,20 @@ def show_cf(cf):
     plt.show()
 
 
+def guess(title, model, dic):
+    processed_title = process_title(title, dic)
+    prediction = model.predict(processed_title)
+    if int(prediction[0]) == 1:
+        return True
+    else:
+        return False
+
+
 def start_program():
     df = load_data()
     relearn = input("Would you like the ai to relearn the data? (Y/N)\n")
     if relearn == "Y":
-        X_train, Y_train, X_test, Y_test, dic = train_test_vectorization(df, "title", 0.75)
+        X_train, Y_train, X_test, Y_test, dic = train_test_vectorization(df, "title", 0.80)
         model = learn(X_train, Y_train, X_test, Y_test, dic)
         acc, cf = test(model, X_test, Y_test)
         print("Relearn process completed:", acc, "Success rate.")
@@ -188,8 +197,7 @@ def start_program():
 
     title = str(input("Enter title (enter 0 to stop the program)\n"))
     while title != "0":
-        processed_title = process_title(title, dic)
-        print(model.predict(processed_title))
+        print(guess(title, model, dic))
         title = str(input("Enter title (enter 0 to stop the program)\n"))
 
 
