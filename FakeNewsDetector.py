@@ -20,7 +20,7 @@ def load_data():
     newsDF = pd.concat([trueNews, fakeNews]).reset_index(drop=True)
     newsDF = newsDF.drop(['subject', 'date', 'text'], axis=1)
 
-    secondDF = pd.read_csv("Fake_Real_2nd_Data.csv")
+    '''secondDF = pd.read_csv("Fake_Real_2nd_Data.csv")
     secondDF = secondDF.replace("REAL", 1)
     secondDF = secondDF.replace("FAKE", 0)
     secondDF = secondDF.drop(['id'], axis=1)
@@ -31,7 +31,11 @@ def load_data():
     thirdDF = thirdDF.replace("Real", 1)
     thirdDF = thirdDF.replace("Fake", 0)
     thirdDF = thirdDF.rename(columns={"label": "true"})
-    newsDF = pd.concat([newsDF, thirdDF]).reset_index(drop=True)
+    newsDF = pd.concat([newsDF, thirdDF]).reset_index(drop=True)'''
+
+    forthDF = pd.read_csv("Fake_Real_4th_Data.csv")
+    forthDF = forthDF.rename(columns={"label": "true"})
+    newsDF = pd.concat([newsDF, forthDF]).reset_index(drop=True)
 
     print("NULL values in the dataframe:\n", newsDF.isnull().sum())
     print("\n\n\nOriginal merged dataframe:\n", newsDF)
@@ -170,7 +174,13 @@ def show_cf(cf):
 
 
 def guess(title, model, dic):
+    if len(title.split(" ")) < 4:
+        print("Title is too short.")
+        return False
     processed_title = process_title(title, dic)
+    if processed_title.getnnz() < 4:
+        print("Not enough known words in the title to make a prediction.")
+        return False
     prediction = model.predict(processed_title)
     if int(prediction[0]) == 1:
         return True
@@ -182,7 +192,8 @@ def start_program():
     df = load_data()
     relearn = input("Would you like the ai to relearn the data? (Y/N)\n")
     if relearn == "Y":
-        X_train, Y_train, X_test, Y_test, dic = train_test_vectorization(df, "title", 0.80)
+        train_size = float(input("Enter train size (0-1)\n"))
+        X_train, Y_train, X_test, Y_test, dic = train_test_vectorization(df, "title", train_size)
         model = learn(X_train, Y_train, X_test, Y_test, dic)
         acc, cf = test(model, X_test, Y_test)
         print("Relearn process completed:", acc, "Success rate.")
