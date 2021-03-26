@@ -215,9 +215,9 @@ def guess(title, model, dic):
         return False
     prediction = model.predict(processed_title)
     if int(prediction[0]) == 1:
-        return True
+        return True, "%.2f" % (model.predict_proba(processed_title)[0][1]*100)
     else:
-        return False
+        return False, "%.2f" % (model.predict_proba(processed_title)[0][0]*100)
 
 
 def check_quit(event):
@@ -305,7 +305,7 @@ def start_program():
     relearn = wait_yes_no()
     if relearn:
         gh.set_screen(screen, 3)
-        train_size = float(input("Enter train size (0-1)\n"))
+        train_size = 0.8
         X_train, Y_train, X_test, Y_test, dic = train_test_vectorization(df, "title", train_size)
         model = learn(X_train, Y_train, X_test, Y_test, dic)
         acc, cf = test(model, X_test, Y_test)
