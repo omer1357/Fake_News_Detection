@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pygame
+import sys
 
 import gensim
 from scipy.sparse import csr_matrix
@@ -10,6 +12,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix
 import pickle
+
+import tkinter as tk
+
+from Logistic_Regression import LogisticRegressionClass
+import Graphic_Handler as gh
 
 
 def load_data():
@@ -58,7 +65,8 @@ def makeDic(texts):
     for sen in texts:
         for word in sen.split():
             if word not in words:
-                words.append(word)
+                if word.encode().isalpha():
+                    words.append(word)
     words.sort()
     for word in words:
         if word not in dic:
@@ -76,7 +84,7 @@ def countVectorize(sen, dic):
     return senVec
 
 
-'''def countDicVectorize(sen, dic):
+'''ef countDicVectorize(sen, dic):
     sen = sen.split()
     senVec = np.zeros(len(sen))
     cnt = 0
@@ -98,13 +106,13 @@ def get_len_data(col):
     return lenpd.describe(), int(lenpd.max())
 
 
-def set_len(arr, target):
+'''def set_len(arr, target):
     if len(arr) > target:
         arr = arr[0:target]
     if len(arr) != target:
         need = target - len(arr)
         arr = np.insert(arr, len(arr), [0]*need)
-    return arr
+    return arr'''
 
 
 def train_test_vectorization(df, col, train):
@@ -130,6 +138,30 @@ def train_test_vectorization(df, col, train):
     testX = csr_matrix(testX)
     testY = testVec["true"].to_numpy()
     return trainX, trainY, testX, testY, dfDic
+
+
+'''def train_test_dicvectorization(df, col, train):
+    df = df.sample(frac=1).reset_index(drop=True)
+    df[col] = df[col].apply(preProcess)
+    print("\n\n\nProcessed df:\n", df)
+    trainSize = int(train * len(df))
+    trainVec = df[0:trainSize]
+    dfDic = makeDic(trainVec[col].values.tolist())
+    print("\n\n\nDictionary:\n", dfDic)
+    df[col] = df[col].apply(countDicVectorize, dic=dfDic)
+    lenDet, maxL = get_len_data(df[col])
+    df[col] = df[col].apply(set_len, target=20)
+    print("\n\nData length details:\n", lenDet, "\n\n")
+    trainVec = df[0:trainSize]
+    testVec = df[trainSize:]
+    print("Train:\n", trainVec, "\n\n\nTest:\n", testVec)
+    trainX = np.stack(trainVec["title"].to_numpy())
+    print(trainX)
+    print(trainX.shape)
+    trainY = trainVec["true"].to_numpy()
+    testX = np.stack(testVec["title"].to_numpy())
+    testY = testVec["true"].to_numpy()
+    return trainX, trainY, testX, testY, dfDic'''
 
 
 def process_title(title, dic):
@@ -188,29 +220,127 @@ def guess(title, model, dic):
         return False
 
 
+def check_quit(event):
+    if event.type == pygame.QUIT:
+        pygame.quit()
+        sys.exit()
+
+
+def wait_yes_no():
+    while True:
+        for event in pygame.event.get():
+            check_quit(event)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if 760 < event.pos[1] < 855:
+                    if 80 < event.pos[0] < 220:
+                        return True
+                    elif 380 < event.pos[0] < 795:
+                        return False
+
+
+def wait_text_input(screen, yt, yb, font_size, img):
+    input_box = pygame.Rect(40, yt, 505, 90)
+    color_inactive = (0, 0, 0)
+    color_active = (194, 0, 0)
+    color = color_inactive
+    active = False
+    text = ''
+    multiline = []
+    font = pygame.font.Font(None, font_size)
+
+    while True:
+        for event in pygame.event.get():
+            check_quit(event)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # If the user clicked on the input_box rect.
+                if input_box.collidepoint(event.pos):
+                    # Toggle the active variable.
+                    active = not active
+                else:
+                    active = False
+                # Change the current color of the input box.
+                color = color_active if active else color_inactive
+
+                if 220 < event.pos[0] < 380 and yb < event.pos[1] < yb + 70:
+                    return "".join(multiline) + text
+
+            if event.type == pygame.KEYDOWN:
+                if active:
+                    if event.key == pygame.K_RETURN:
+                        return "".join(multiline) + text
+                    elif event.key == pygame.K_BACKSPACE:
+                        if text == "":
+                            text = multiline[-1]
+                            multiline = multiline[:-1]
+                        text = text[:-1]
+                    else:
+                        text += event.unicode
+
+        # Render the current text.
+        gh.set_screen(screen, img)
+        txt_surface = font.render(text, True, color)
+        if txt_surface.get_width() + 25 > 505:
+            multiline.append(text)
+            text = ''
+        if multiline:
+            line = 0
+            multiline.append(text)
+            for i in multiline:
+                txt_surface = font.render(i, True, color)
+                screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5 + line*25))
+                line += 1
+            multiline = multiline[:-1]
+        else:
+            screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+
+        pygame.draw.rect(screen, color, input_box, 2)
+        pygame.display.flip()
+
+
 def start_program():
     df = load_data()
-    relearn = input("Would you like the ai to relearn the data? (Y/N)\n")
-    if relearn == "Y":
+    screen = gh.init_pygame()
+    gh.set_screen(screen, 0)
+
+    relearn = wait_yes_no()
+    if relearn:
+        gh.set_screen(screen, 3)
         train_size = float(input("Enter train size (0-1)\n"))
         X_train, Y_train, X_test, Y_test, dic = train_test_vectorization(df, "title", train_size)
         model = learn(X_train, Y_train, X_test, Y_test, dic)
         acc, cf = test(model, X_test, Y_test)
+        gh.set_screen(screen, 2)
         print("Relearn process completed:", acc, "Success rate.")
     else:
         model, X_test, Y_test, dic = load_model()
         acc, cf = test(model, X_test, Y_test)
+        gh.set_screen(screen, 1)
         print("Model loaded.", acc, "Success rate.")
 
-    present_cf = input("Would you like to see the ai confusion matrix? (Y/N)\n")
-    if present_cf == "Y":
+    '''X_train, Y_train, X_test, Y_test, dic = train_test_vectorization(df, "title", 0.8)
+    mod = LogisticRegressionClass(max_iter=100)
+    mod.fit(X_train, Y_train)
+    pred = mod.predict(X_test)[0]
+    print("acc: ", np.sum(Y_test == pred)/len(Y_test))'''
+
+    present_cf = wait_yes_no()
+    if present_cf:
         show_cf(cf)
 
-    title = str(input("Enter title (enter 0 to stop the program)\n"))
+    gh.set_screen(screen, 4)
+    title = wait_text_input(screen, 655, 790, 35, 4)
+    print(title)
     while title != "0":
-        print(guess(title, model, dic))
-        title = str(input("Enter title (enter 0 to stop the program)\n"))
+        predict = guess(title, model, dic)
+        print(predict)
+        if predict:
+            gh.set_screen(screen, 6)
+            title = wait_text_input(screen, 693, 810, 35, 6)
+            print(title)
+        else:
+            gh.set_screen(screen, 5)
+            title = wait_text_input(screen, 693, 810, 35, 5)
+            print(title)
 
 
 start_program()
-
