@@ -1,9 +1,9 @@
 import pygame
 
 
-def init_pygame(size=(600, 900), caption="Omer's Fake News Detector"):
+def init_pygame(size=600, caption="Omer's Fake News Detector"):
     pygame.init()
-    screen = pygame.display.set_mode(size)
+    screen = pygame.display.set_mode((size, int(size*1.5)))
     pygame.display.set_caption(caption)
     EMPTY = pygame.image.load(".\Graphics\Empty screen.png")
     screen.blit(EMPTY, (0, 0))
@@ -20,6 +20,14 @@ def set_screen(screen, img):
     FALSE_ASK_TITLE = pygame.image.load(".\Graphics\The AI think it's FAKE! Enter another news title to see the AI prediction.png")
     TRUE_ASK_TITLE = pygame.image.load(".\Graphics\The AI think it's TRUE! Enter another news title to see the AI prediction.png")
     EMPTY = pygame.image.load(".\Graphics\Empty screen.png")
+    ASK_RELEARN = pygame.transform.scale(ASK_RELEARN, pygame.display.get_surface().get_size())
+    LOADED_ASK_CONFUSION = pygame.transform.scale(LOADED_ASK_CONFUSION, pygame.display.get_surface().get_size())
+    RELEARNED_ASK_CONFUSION = pygame.transform.scale(RELEARNED_ASK_CONFUSION, pygame.display.get_surface().get_size())
+    RELEARNING = pygame.transform.scale(RELEARNING, pygame.display.get_surface().get_size())
+    ASK_TITLE = pygame.transform.scale(ASK_TITLE, pygame.display.get_surface().get_size())
+    FALSE_ASK_TITLE = pygame.transform.scale(FALSE_ASK_TITLE, pygame.display.get_surface().get_size())
+    TRUE_ASK_TITLE = pygame.transform.scale(TRUE_ASK_TITLE, pygame.display.get_surface().get_size())
+    EMPTY = pygame.transform.scale(EMPTY, pygame.display.get_surface().get_size())
     chooser = {
                     0: ASK_RELEARN,
                     1: LOADED_ASK_CONFUSION,
