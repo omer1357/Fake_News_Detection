@@ -31,6 +31,9 @@ def set_screen(screen, img):
                     7: EMPTY,
 
             }.get(img, EMPTY)
+    if img == 5 or img == 6:
+        if pygame.display.get_surface().get_size()[1] != 1050:
+            screen = pygame.display.set_mode((600, 1050))
     screen.blit(chooser, (0, 0))
     pygame.display.flip()
 

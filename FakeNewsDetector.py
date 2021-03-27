@@ -207,17 +207,15 @@ def show_cf(cf):
 
 def guess(title, model, dic):
     if len(title.split(" ")) < 4:
-        print("Title is too short.")
-        return False
+        return False, "Title is too short."
     processed_title = process_title(title, dic)
     if processed_title.getnnz() < 4:
-        print("Not enough known words in the title to make a prediction.")
-        return False
+        return False, "Not enough known words in the title to make a prediction."
     prediction = model.predict(processed_title)
     if int(prediction[0]) == 1:
-        return True, "%.2f" % (model.predict_proba(processed_title)[0][1]*100)
+        return True, "The prediction propability is " + "%.2f" % (model.predict_proba(processed_title)[0][1]*100)
     else:
-        return False, "%.2f" % (model.predict_proba(processed_title)[0][0]*100)
+        return False, "The prediction propability is " + "%.2f" % (model.predict_proba(processed_title)[0][0]*100)
 
 
 def check_quit(event):
@@ -238,7 +236,7 @@ def wait_yes_no():
                         return False
 
 
-def wait_text_input(screen, yt, yb, font_size, img):
+def wait_text_input(screen, yt, yb, font_size, img, text_box):
     input_box = pygame.Rect(40, yt, 505, 90)
     color_inactive = (0, 0, 0)
     color_active = (194, 0, 0)
@@ -278,6 +276,7 @@ def wait_text_input(screen, yt, yb, font_size, img):
 
         # Render the current text.
         gh.set_screen(screen, img)
+        show_text_on_box(screen, text_box, font_size)
         txt_surface = font.render(text, True, color)
         if txt_surface.get_width() + 25 > 505:
             multiline.append(text)
@@ -295,6 +294,33 @@ def wait_text_input(screen, yt, yb, font_size, img):
 
         pygame.draw.rect(screen, color, input_box, 2)
         pygame.display.flip()
+
+
+def show_text_on_box(screen, out, font_size):
+    if out == "":
+        return
+    multiline = []
+    text = ''
+    input_box = pygame.Rect(40, 950, 505, 75)
+    font = pygame.font.Font(None, font_size)
+    for i in out.split():
+        text += i + " "
+        txt_surface = font.render(text, True, (0, 0, 0))
+        if txt_surface.get_width() + 25 > 505:
+            multiline.append(" ".join(text.split()[:-1]))
+            text = text.split()[-1] + " "
+    if multiline:
+        line = 0
+        multiline.append(text)
+        for i in multiline:
+            txt_surface = font.render(i, True, (0, 0, 0))
+            screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5 + line * 25))
+            line += 1
+    else:
+        txt_surface = font.render(out, True, (0, 0, 0))
+        screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+
+    pygame.display.flip()
 
 
 def start_program():
@@ -328,18 +354,18 @@ def start_program():
         show_cf(cf)
 
     gh.set_screen(screen, 4)
-    title = wait_text_input(screen, 655, 790, 35, 4)
+    title = wait_text_input(screen, 655, 790, 35, 4, "")
     print(title)
     while title != "0":
-        predict = guess(title, model, dic)
+        predict, output = guess(title, model, dic)
         print(predict)
         if predict:
             gh.set_screen(screen, 6)
-            title = wait_text_input(screen, 693, 810, 35, 6)
+            title = wait_text_input(screen, 693, 810, 35, 6, output)
             print(title)
         else:
             gh.set_screen(screen, 5)
-            title = wait_text_input(screen, 693, 810, 35, 5)
+            title = wait_text_input(screen, 693, 810, 35, 5, output)
             print(title)
 
 
