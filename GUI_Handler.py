@@ -1,0 +1,158 @@
+import pygame
+import numpy as np
+import sys
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+
+def init_pygame(size=600, caption="Omer's Fake News Detector"):
+    pygame.init()
+    screen = pygame.display.set_mode((size, int(size*1.5)))
+    pygame.display.set_caption(caption)
+    EMPTY = pygame.image.load(".\Graphics\Empty screen.png")
+    screen.blit(EMPTY, (0, 0))
+    pygame.display.flip()
+    return screen
+
+
+def set_screen(screen, img):
+    ASK_RELEARN = pygame.image.load(".\Graphics\Would you like the AI to relearn  the data.png")
+    LOADED_ASK_CONFUSION = pygame.image.load(".\Graphics\AI loaded successfully. Do you want to see the confusion matrix.png")
+    RELEARNED_ASK_CONFUSION = pygame.image.load(".\Graphics\Data relearned successfully. Do you want to see the confusion matrix.png")
+    RELEARNING = pygame.image.load(".\Graphics\Relearning.png")
+    ASK_TITLE = pygame.image.load(".\Graphics\Enter a news title to see the AI prediction.png")
+    FALSE_ASK_TITLE = pygame.image.load(".\Graphics\The AI think it's FAKE! Enter another news title to see the AI prediction.png")
+    TRUE_ASK_TITLE = pygame.image.load(".\Graphics\The AI think it's TRUE! Enter another news title to see the AI prediction.png")
+    EMPTY = pygame.image.load(".\Graphics\Empty screen.png")
+    chooser = {
+                    0: ASK_RELEARN,
+                    1: LOADED_ASK_CONFUSION,
+                    2: RELEARNED_ASK_CONFUSION,
+                    3: RELEARNING,
+                    4: ASK_TITLE,
+                    5: FALSE_ASK_TITLE,
+                    6: TRUE_ASK_TITLE,
+                    7: EMPTY,
+
+            }.get(img, EMPTY)
+    if img == 5 or img == 6:
+        if pygame.display.get_surface().get_size()[1] != 1050:
+            screen = pygame.display.set_mode((600, 1050))
+    screen.blit(chooser, (0, 0))
+    pygame.display.flip()
+
+
+def check_quit(event):
+    if event.type == pygame.QUIT:
+        pygame.quit()
+        sys.exit()
+
+
+def wait_yes_no():
+    while True:
+        for event in pygame.event.get():
+            check_quit(event)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if 760 < event.pos[1] < 855:
+                    if 80 < event.pos[0] < 220:
+                        return True
+                    elif 380 < event.pos[0] < 795:
+                        return False
+
+
+def wait_text_input(screen, yt, yb, font_size, img, text_box):
+    input_box = pygame.Rect(40, yt, 505, 90)
+    color_inactive = (0, 0, 0)
+    color_active = (194, 0, 0)
+    color = color_inactive
+    active = False
+    text = ''
+    multiline = []
+    font = pygame.font.Font(None, font_size)
+
+    while True:
+        for event in pygame.event.get():
+            check_quit(event)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # If the user clicked on the input_box rect.
+                if input_box.collidepoint(event.pos):
+                    # Toggle the active variable.
+                    active = not active
+                else:
+                    active = False
+                # Change the current color of the input box.
+                color = color_active if active else color_inactive
+
+                if 220 < event.pos[0] < 380 and yb < event.pos[1] < yb + 70:
+                    return "".join(multiline) + text
+
+            if event.type == pygame.KEYDOWN:
+                if active:
+                    if event.key == pygame.K_RETURN:
+                        return "".join(multiline) + text
+                    elif event.key == pygame.K_BACKSPACE:
+                        if text == "":
+                            if multiline:
+                                text = multiline[-1]
+                                multiline = multiline[:-1]
+                                text = text[:-1]
+                        else:
+                            text = text[:-1]
+                    else:
+                        text += event.unicode
+
+        # Render the current text.
+        set_screen(screen, img)
+        show_text_on_box(screen, text_box, font_size)
+        txt_surface = font.render(text, True, color)
+        if txt_surface.get_width() + 25 > 505:
+            multiline.append(text)
+            text = ''
+        if multiline:
+            line = 0
+            multiline.append(text)
+            for i in multiline:
+                txt_surface = font.render(i, True, color)
+                screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5 + line*25))
+                line += 1
+            multiline = multiline[:-1]
+        else:
+            screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+
+        pygame.draw.rect(screen, color, input_box, 2)
+        pygame.display.flip()
+
+
+def show_text_on_box(screen, out, font_size):
+    if out == "":
+        return
+    multiline = []
+    text = ''
+    input_box = pygame.Rect(40, 950, 505, 75)
+    font = pygame.font.Font(None, font_size)
+    for i in out.split():
+        text += i + " "
+        txt_surface = font.render(text, True, (0, 0, 0))
+        if txt_surface.get_width() + 25 > 505:
+            multiline.append(" ".join(text.split()[:-1]))
+            text = text.split()[-1] + " "
+    if multiline:
+        line = 0
+        multiline.append(text)
+        for i in multiline:
+            txt_surface = font.render(i, True, (0, 0, 0))
+            screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5 + line * 25))
+            line += 1
+    else:
+        txt_surface = font.render(out, True, (0, 0, 0))
+        screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+
+    pygame.display.flip()
+
+
+def show_cf(cf):
+    percentage = cf / np.sum(cf) * 100
+    num_data = ["%.2f" % (percentage[0][0]) + "%\n" + str(cf[0][0]), "%.2f" % (percentage[0][1]) + "%\n" + str(cf[0][1]), "%.2f" % (percentage[1][0]) + "%\n" + str(cf[1][0]), "%.2f" % (percentage[1][1]) + "%\n" + str(cf[1][1])]
+    labels = [["True Neg\n" + num_data[0], "False Pos\n" + num_data[1]], ["False Neg\n" + num_data[2], "True Pos\n" + num_data[3]]]
+    sns.heatmap(cf, annot=labels, fmt="", cmap='Blues')
+    plt.show()
