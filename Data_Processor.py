@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import pandas as pd
 import gensim
@@ -18,15 +20,17 @@ def load_data():
     secondDF = secondDF.replace("FAKE", 0)
     secondDF = secondDF.drop(['id'], axis=1)
     secondDF = secondDF.rename(columns={"label": "true"})
-    newsDF = pd.concat([newsDF, secondDF]).reset_index(drop=True)
+    newsDF = pd.concat([newsDF, secondDF]).reset_index(drop=True)'''
 
-    thirdDF = pd.read_csv(".\Data\Fake_Real_3rd_Data.csv")
+    '''thirdDF = pd.read_csv(".\Data\Fake_Real_3rd_Data.csv")
     thirdDF = thirdDF.replace("Real", 1)
     thirdDF = thirdDF.replace("Fake", 0)
     thirdDF = thirdDF.rename(columns={"label": "true"})
     newsDF = pd.concat([newsDF, thirdDF]).reset_index(drop=True)'''
 
     forthDF = pd.read_csv(".\Data\Fake_Real_4th_Data.csv")
+    forthDF = forthDF.replace("1", 0)
+    forthDF = forthDF.replace("0", 1)
     forthDF = forthDF.rename(columns={"label": "true"})
     newsDF = pd.concat([newsDF, forthDF]).reset_index(drop=True)
 
@@ -80,9 +84,10 @@ def process_one_title(title, dic):
 def train_test_vectorization(df, col, train):
     start_time = time.time()
     df = df.sample(frac=1).reset_index(drop=True)
+    trainSize = int(train * len(df))
+    test_df = copy.deepcopy(df[trainSize:])
     df[col] = df[col].apply(preProcess)
     print("\n\n\nProcessed df:\n", df)
-    trainSize = int(train * len(df))
     trainVec = df[0:trainSize]
     dfDic = makeDic(trainVec[col].values.tolist())
     print("makeDic:")
@@ -110,5 +115,5 @@ def train_test_vectorization(df, col, train):
     print("test X csr")
     print("--- %s seconds ---" % (time.time() - start_time))
     testY = testVec["true"].to_numpy()
-    return trainX, trainY, testX, testY, dfDic
+    return trainX, trainY, testX, testY, dfDic, test_df
 

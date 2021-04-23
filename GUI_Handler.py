@@ -24,6 +24,10 @@ def set_screen(screen, img):
     FALSE_ASK_TITLE = pygame.image.load(".\Graphics\The AI think it's FAKE! Enter another news title to see the AI prediction.png")
     TRUE_ASK_TITLE = pygame.image.load(".\Graphics\The AI think it's TRUE! Enter another news title to see the AI prediction.png")
     EMPTY = pygame.image.load(".\Graphics\Empty screen.png")
+    GUESS = pygame.image.load(".\Graphics\Do you think it's true.png")
+    WRONG_GUESS = pygame.image.load(".\Graphics\Wrong! Do you think it's true.png")
+    CORRECT_GUESS = pygame.image.load(".\Graphics\Correct! Do you think it's true.png")
+    MENU = pygame.image.load(".\Graphics\Menu.png")
     chooser = {
                     0: ASK_RELEARN,
                     1: LOADED_ASK_CONFUSION,
@@ -33,11 +37,17 @@ def set_screen(screen, img):
                     5: FALSE_ASK_TITLE,
                     6: TRUE_ASK_TITLE,
                     7: EMPTY,
-
-            }.get(img, EMPTY)
-    if img == 5 or img == 6:
+                    8: GUESS,
+                    9: WRONG_GUESS,
+                    10: CORRECT_GUESS,
+                    11: MENU,
+            }.get(img, MENU)
+    if img == 5 or img == 6 or img == 9 or img == 10:
         if pygame.display.get_surface().get_size()[1] != 1050:
             screen = pygame.display.set_mode((600, 1050))
+    else:
+        if pygame.display.get_surface().get_size()[1] != 900:
+            screen = pygame.display.set_mode((600, 900))
     screen.blit(chooser, (0, 0))
     pygame.display.flip()
 
@@ -48,12 +58,23 @@ def check_quit(event):
         sys.exit()
 
 
-def wait_yes_no():
+def wait_action():
     while True:
         for event in pygame.event.get():
             check_quit(event)
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if 760 < event.pos[1] < 855:
+                if 65 < event.pos[0] < 535:
+                    if 535 < event.pos[1] < 650:
+                        return 1
+                    elif 720 < event.pos[1] < 830:
+                        return 0
+
+def wait_yes_no(y):
+    while True:
+        for event in pygame.event.get():
+            check_quit(event)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if y < event.pos[1] < y + 95:
                     if 80 < event.pos[0] < 220:
                         return True
                     elif 380 < event.pos[0] < 795:
@@ -103,7 +124,7 @@ def wait_text_input(screen, yt, yb, font_size, img, text_box):
 
         # Render the current text.
         set_screen(screen, img)
-        show_text_on_box(screen, text_box, font_size)
+        show_text_on_box(screen, text_box, font_size, 40, 950)
         txt_surface = font.render(text, True, color)
         if txt_surface.get_width() + 25 > 505:
             multiline.append(text)
@@ -123,12 +144,12 @@ def wait_text_input(screen, yt, yb, font_size, img, text_box):
         pygame.display.flip()
 
 
-def show_text_on_box(screen, out, font_size):
+def show_text_on_box(screen, out, font_size, x, y):
     if out == "":
         return
     multiline = []
     text = ''
-    input_box = pygame.Rect(40, 950, 505, 75)
+    input_box = pygame.Rect(x, y, 505, 75)
     font = pygame.font.Font(None, font_size)
     for i in out.split():
         text += i + " "

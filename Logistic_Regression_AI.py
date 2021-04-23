@@ -38,11 +38,11 @@ class SparseLogisticRegression:
         return y_class, y_predict
 
 
-def learn(x, y, x_test, y_test, dic):
+def learn(x, y, x_test, y_test, dic, test_pd):
     model = SparseLogisticRegression(max_iter=600)
     model.fit(x, y)
     with open("model.pkl", 'wb') as file:
-        pickle.dump([model, x_test, y_test, dic], file)
+        pickle.dump([model, x_test, y_test, dic, test_pd], file)
     return model
 
 
@@ -77,18 +77,17 @@ def load_model():
     x_test = read[1]
     y_test = read[2]
     dic = read[3]
-    return read_model, x_test, y_test, dic
+    test_pd = read[4]
+    return read_model, x_test, y_test, dic, test_pd
 
 
 def guess_one_title(title, model, dic):
     if len(title.split(" ")) < 4:
         return False, "Title is too short."
     processed_title = dp.process_one_title(title, dic)
-    print(processed_title)
     if processed_title.getnnz() < 4:
         return False, "Not enough known words in the title to make a prediction."
     prediction = model.predict(processed_title)
-    print(prediction)
     if int(prediction[0][0]) == 1:
         return True, "The AI thinks it's true, the prediction probability is " + "%.2f" % (prediction[1][0] * 100)
     else:
