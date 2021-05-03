@@ -12,7 +12,7 @@ def game(test_df, model, dic, screen):
     points = [0, 0]
     gh.set_screen(screen, 8)
     title = ""
-    while len(title) == 0 or len(title.split()) > 17:
+    while len(title.split()) < 5 or len(title.split()) > 17:
         game_title = random.randint(0, len(test_df))
         title = test_df.iloc[game_title][0]
     gh.show_text_on_box(screen, title, 35, 40, 495)
@@ -30,7 +30,7 @@ def game(test_df, model, dic, screen):
                 gh.set_screen(screen, 9)
             else:
                 gh.set_screen(screen, 9)
-        ai_guess = lr.guess_one_title(test_df.iloc[game_title][0], model, dic)
+        ai_guess = lr.guess_one_title(title, model, dic)
         log = ai_guess[1] + ". "
         print(ai_guess[1])
         if ai_guess[0]:
@@ -45,13 +45,13 @@ def game(test_df, model, dic, screen):
             else:
                 log += "He is right!"
                 points[0] += 1
-        gh.show_text_on_box(screen, title, 35, 40, 680)
         title = ""
-        while len(title) == 0 or len(title.split()) > 17:
+        while len(title.split()) < 5 or len(title.split()) > 17:
             game_title = random.randint(0, len(test_df))
             title = test_df.iloc[game_title][0]
         log += " ||The AI: " + str(points[0]) + " points, you: " + str(points[1]) + " points||"
         gh.show_text_on_box(screen, log, 35, 40, 555)
+        gh.show_text_on_box(screen, title, 35, 40, 680)
         pygame.display.flip()
         answer = int(gh.wait_yes_no(910))
 
