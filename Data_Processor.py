@@ -1,13 +1,17 @@
-import copy
+"""
+This file is responsible of all the functions that uses the data.
+From loading it to preprocessing and vectorizing it.
+"""
 
+# Imports
+import copy
 import numpy as np
 import pandas as pd
 import gensim
 from scipy.sparse import csr_matrix
-import time
 
 
-def load_data():
+def load_data():  # Function to load the 2 datasets and combine them.
     fakeNews = pd.read_csv(".\Data\Fake.csv")
     trueNews = pd.read_csv(".\Data\True.csv")
     trueNews['true'] = 1
@@ -15,32 +19,17 @@ def load_data():
     newsDF = pd.concat([trueNews, fakeNews]).reset_index(drop=True)
     newsDF = newsDF.drop(['subject', 'date', 'text'], axis=1)
 
-    '''secondDF = pd.read_csv(".\Data\Fake_Real_2nd_Data.csv")
-    secondDF = secondDF.replace("REAL", 1)
-    secondDF = secondDF.replace("FAKE", 0)
-    secondDF = secondDF.drop(['id'], axis=1)
-    secondDF = secondDF.rename(columns={"label": "true"})
-    newsDF = pd.concat([newsDF, secondDF]).reset_index(drop=True)'''
+    secDF = pd.read_csv(".\Data\Fake_Real_2nd_Data.csv")
+    secDF = secDF.replace("1", 0)
+    secDF = secDF.replace("0", 1)
+    secDF = secDF.rename(columns={"label": "true"})
+    newsDF = pd.concat([newsDF, secDF]).reset_index(drop=True)
 
-    '''thirdDF = pd.read_csv(".\Data\Fake_Real_3rd_Data.csv")
-    thirdDF = thirdDF.replace("Real", 1)
-    thirdDF = thirdDF.replace("Fake", 0)
-    thirdDF = thirdDF.rename(columns={"label": "true"})
-    newsDF = pd.concat([newsDF, thirdDF]).reset_index(drop=True)'''
-
-    forthDF = pd.read_csv(".\Data\Fake_Real_4th_Data.csv")
-    forthDF = forthDF.replace("1", 0)
-    forthDF = forthDF.replace("0", 1)
-    forthDF = forthDF.rename(columns={"label": "true"})
-    newsDF = pd.concat([newsDF, forthDF]).reset_index(drop=True)
-
-    print("NULL values in the dataframe:\n", newsDF.isnull().sum())
-    print("\n\n\nOriginal merged dataframe:\n", newsDF)
-
+    print("----Data Loaded----\n\n")
     return newsDF
 
 
-def preProcess(text):
+def preProcess(text):  # Function to preprocess the data - remove stop words and special characters, lowercase all, etc.
     res = []
     for word in gensim.utils.simple_preprocess(text):
         if word not in gensim.parsing.preprocessing.STOPWORDS:
@@ -48,7 +37,7 @@ def preProcess(text):
     return " ".join(res)
 
 
-def makeDic(texts):
+def makeDic(texts):  # Function to make a dictionary containing all the words in a given texts array.
     words = []
     dic = {}
     cnt = 1
@@ -65,7 +54,7 @@ def makeDic(texts):
     return dic
 
 
-def countVectorize(sen, dic):
+def countVectorize(sen, dic):  # Function to count vectorize a given sentence using a given dictionary
     sen = sen.split()
     senVec = np.zeros(len(dic))
     for word in sen:
@@ -75,6 +64,9 @@ def countVectorize(sen, dic):
 
 
 def process_one_title(title, dic):
+    """
+    Function to full process a single title (from preprocess to count vectorization and sparse matrix representation).
+    """
     title = preProcess(title)
     title = countVectorize(title, dic)
     title = csr_matrix(title)
@@ -82,38 +74,31 @@ def process_one_title(title, dic):
 
 
 def train_test_vectorization(df, col, train):
-    start_time = time.time()
+    """
+    Function to full process a given pandas dataframe
+    (from preprocess to count vectorization and sparse matrix representation)
+    As well as splitting to train, test and x, y by a given train/test rate.
+    """
+
     df = df.sample(frac=1).reset_index(drop=True)
     trainSize = int(train * len(df))
     test_df = copy.deepcopy(df[trainSize:])
     df[col] = df[col].apply(preProcess)
-    print("\n\n\nProcessed df:\n", df)
+    print("----Preprocess Completed----\n\n")
+
     trainVec = df[0:trainSize]
     dfDic = makeDic(trainVec[col].values.tolist())
-    print("makeDic:")
-    print("--- %s seconds ---" % (time.time() - start_time))
-    print("\n\n\nDictionary:\n", dfDic)
     df[col] = df[col].apply(countVectorize, dic=dfDic)
-    print("countVector:")
-    print("--- %s seconds ---" % (time.time() - start_time))
+    print("----Data Vectorized----\n\n")
+
     trainVec = df[0:trainSize]
     testVec = df[trainSize:]
-    print("train test split:")
-    print("--- %s seconds ---" % (time.time() - start_time))
-    print("Train:\n", trainVec, "\n\n\nTest:\n", testVec)
     trainX = np.stack(trainVec["title"].to_numpy())
-    print("train X to stack:")
-    print("--- %s seconds ---" % (time.time() - start_time))
-    print("TYPE: ", type(trainX))
     trainX = csr_matrix(trainX)
-    print("train X to csr:")
-    print("--- %s seconds ---" % (time.time() - start_time))
     trainY = trainVec["true"].to_numpy()
-    print("Train:\n", trainVec, "\n\n\nTest:\n", testVec)
     testX = np.stack(testVec["title"].to_numpy())
     testX = csr_matrix(testX)
-    print("test X csr")
-    print("--- %s seconds ---" % (time.time() - start_time))
     testY = testVec["true"].to_numpy()
+    print("----Data Handled----\n\n")
     return trainX, trainY, testX, testY, dfDic, test_df
 
