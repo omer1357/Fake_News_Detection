@@ -1,5 +1,5 @@
 """
-This file contains the logistoc regression AI and all the functions using it.
+This file contains the logistic regression AI and all the functions using it.
 Including the training, testing, making the confusion matrix, etc.
 """
 
